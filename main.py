@@ -83,6 +83,11 @@ def test_keras_lstm():
     batch_size = seq_len
     epochs = 20
 
+    rnn = AddingProblemURNN(input_dim, hiddAddingProblemURNNen_size, output_dim)
+    rnn.train(adding_problem_dataset, batch_size, epochs)
+
+
     keras_lstm = KerasLSTM(input_dim, output_dim, hidden_size, timesteps)
     keras_lstm.train(adding_problem_dataset, batch_size, epochs)
 """
+
