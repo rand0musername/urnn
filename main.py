@@ -8,7 +8,22 @@ import tensorflow as tf
 from networks.tf_rnn import TFRNN
 
 class Main:
+    def init_data(self):
+        print('Generating data...')
+        # init adding problem
+        adp_samples = 10000 #check this
+        self.adp_timesteps = [100, 200, 400, 750]
+        self.apds = [AddingProblemDataset(adp_samples, timesteps) for timesteps in self.adp_timesteps]
+
+        # init copying memory problem
+        cmd_samples = 10000
+        self.cmd_timesteps = [100, 200, 300, 500]
+        self.cmds = [CopyingMemoryProblemDataset(cmd_samples, timesteps) for timesteps in self.cmd_timesteps]
+
+        print('Done.')
+
     def init_networks(self): # FINISH THIS SHIT IS NOT DONE
+        print('Initializing networks...')
         batch_size = 20
         epochs = 20
         #rnn = AddingProblemRNN(input_dim, hidden_size, output_dim)
@@ -46,24 +61,17 @@ class Main:
         #     file.write("%s\n" % item)
 
 
-        ap_lstm.train(adding_problem_dataset, batch_size, epochs)
-        ap_lstm_loss = ap_lstm.get_loss_list()
+        # ap_lstm.train(adding_problem_dataset, batch_size, epochs)
+        # ap_lstm_loss = ap_lstm.get_loss_list()
 
-        file = open('ap_ap_lstm_loss.txt', 'w')
-        for item in ap_lstm_loss:
-            file.write("%s\n" % item)
-
-    def init_data(self):
-        num_samples = 10000
-        seq_len = 20
-        adding_problem_dataset = AddingProblemDataset(num_samples, seq_len)
-
-        test = CopyingMemoryProblemDataset(10, 20)
-        X, Y = test.get_test_data()
-        print(X, Y)
+        # file = open('ap_ap_lstm_loss.txt', 'w')
+        # for item in ap_lstm_loss:
+        #     file.write("%s\n" % item)
+        print('Done.')
 
 main = Main()
 main.init_data()
+main.init_networks()
 
 
 """
