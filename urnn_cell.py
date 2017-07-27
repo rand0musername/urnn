@@ -1,39 +1,50 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from datetime import datetime
  
- # Matrix classes
+class DiagonalMatrix():
+    def __init__(self, name, num_units):
+        init_w = tf.random_uniform([num_units], minval=-np.pi, maxval=np.pi)
+        self.w = tf.Variable(init_w, name=name)
+        self.vec = tf.complex(tf.cos(self.w), tf.sin(self.w))
 
-class SimpleUnitaryMatrix:
-    # this is a num_units X num_units Matrix represented by one vector
-    def __init_(self, name, num_units):
-        self.vec = tf.Variable(tf.zeros(num_units), name=name, dtype=tf.complex64)
+    # batch_sz x num_units -> transform every row
+    def mul(self, z): # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
+        return vec_c * z
 
-    # multiply this Matrix with a [num_units X batch_size] Matrix
-    # Matrix (batch_size row vectors) to return a Matrix with same shape
-    def mul_batch(self, b):
-        # b is a complex matrix, return a complex too
-        raise NotImplementedError("To be implemented")
+class ReflectionMatrix():
+    def __init__(self, name, num_units):
+        self.re = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_re")
+        self.im = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_im")
+        self.v = tf.complex(self.re, self.im)
+        # NORMALIZE?!
 
-class DiagonalMatrix(SimpleUnitaryMatrix):
-    def mul_batch(self, b):
-        print('D')
+    # batch_sz x num_units -> transform every row
+    def mul(self, z): # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
+        vstar = tf.conj(v) # [num_units] 
+        sq_norm = tf.reduce_sum(v)**2 #[1] 
+        prod = v * tf.reduce_sum(tvstar * z, 1) #[num_units]
+        return z - prod * (2 / sq_norm) #[num_units]
 
-class ReflectionMatrix(SimpleUnitaryMatrix):
-    def mul_batch(self, b):
-        print('R')
+# FFTs are constant: 0 parameters
 
-class PermutationMatrix(SimpleUnitaryMatrix):
-    def mul_batch(self, b):
-        print('P')
+# does stuff over rows
 
-class FFTMatrix(SimpleUnitaryMatrix):
-    def mul_batch(self, b):
-        print('F')
+def fft(mat):
+    # batch_sz x num_units
+    # scale???
+    # transpose???
+    return tf.fft(mat)/sqrt(mat.shape[0])
 
-class IFFTMatrix(SimpleUnitaryMatrix):
-    def mul_batch(self, b):
-        print('I')
+def ifft(mat):
+    #  batch_sz x num_units
+    # scale???
+    # transpose???
+    return tf.ifft(mat)/sqrt(mat.shape[0])
+
+
+###################################################################################################333
 
 class URNNCell(tf.contrib.rnn.RNNCell):
     """The most basic URNN cell.
@@ -47,37 +58,51 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     def __init__(self, num_units, input_size, activation=None, reuse=None):
         super(URNNCell, self).__init__(_reuse=reuse)
-        self.num_units = num_units
-        self.input_size = input_size
-        self.activation = activation or math_ops.tanh
+        self._num_units = num_units
+        self._input_size = input_size
+
+        self._state_size = num_units 
+        self._output_size = num_units*2
+
+        self.activation = activation # DON'T PASS THIS
         # ENTER THE LAYER: 2*num_units, real and complex
-        self.w_ih = tf.Variable(tf.random_uniform([2*num_units, input_size], minval=-1, maxval=1), 
-                                    name="w_ho")
-        self.b_h = tf.Variable(tf.zeros(num_units, 1),
-                                    name="b_o")
+        self.w_ih = tf.get_variable("w_ih", shape=[2*num_units, input_size], 
+                                    initializer=tf.contrib.layers.xavier_initializer()) # fixme
+
+        self.b_h = tf.Variable(tf.zeros(num_units), # state size actually
+                                    name="b_h")
+        # num_units
         self.D1 = DiagonalMatrix("D1", num_units)
-        self.F = FFTMatrix("F", num_units)
         self.R1 = ReflectionMatrix("R1", num_units)
-        self.P = PermutationMatrix("P", num_units)
+
+        tf.set_random_seed(int(datetime.now().timestamp()))
+
         self.D2 = DiagonalMatrix("D2", num_units)
-        self.IF = IFFTMatrix("IF", num_units)
         self.R2 = ReflectionMatrix("R2", num_units)
         self.D3 = DiagonalMatrix("D3", num_units)
 
     @property
     def input_size(self):
-        return self.input_size
+        return self._input_size # real
 
     @property
     def state_size(self):
-        return self.num_units
+        return self._state_size # complex
 
     @property
     def output_size(self):
-        return self.num_units*2
+        return self._output_size # real
 
-    def modReLU(self, a):
-        return 'x'
+    # z: complex: batch_sz x num_units
+    # bias: num_units
+    def modReLU(self, z, bias):
+        EPS = 1e-6 # hack?
+        norm = tf.complex_abs(z)
+        if (norm + bias) >= 0:
+            scale = (norm+bias) / (n+EPS)
+            return f.complex(tf.real(z)*scale, tf.imag(z)*scale)
+        else:
+            return 0
 
     def call(self, inputs, state):
         """The most basic URNN cell.
@@ -86,31 +111,44 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         state (Tensor - batch_sz x num_units): Previous cell state: COMPLEX
         Returns:
         A tuple (outputs, state):
-        outputs (Tensor - batch_sz x num_units): Cell outputs on the whole batch.
+        outputs (Tensor - batch_sz x num_units*2): Cell outputs on the whole batch.
         state (Tensor - batch_sz x num_units): New state of the cell.
         """
 
-        # STATE
-        state = tf.transpose(state) # num_units x batch_sz
-        state_mul = self.D1.mul_batch(state)
-        state_mul = self.F.mul_batch(state_mul)
-        state_mul = self.R1.mul_batch(state_mul)
-        state_mul = self.P.mul_batch(state_mul)
-        state_mul = self.D2.mul_batch(state_mul)
-        state_mul = self.IF.mul_batch(state_mul)
-        state_mul = self.R2.mul_batch(state_mul)
-        state_mul = self.D3.mul_batch(state_mul) # num_units x batch_sz
-
         # INPUT
-        inputs = tf.transpose(inputs) # input_size x batch_sz
-        inputs_mul = tf.matmul(self.w_ih, inputs) # 2*num_units x batch_sz
-        inputs_mul = 
-        in_proj_c = tf.complex( in_proj[:, :self.state_size], in_proj[:, self.state_size:] )
-            
+        inputs_mul = tf.matmul(inputs, tf.transpose(self.w_ih)) # batch_sz x 2*num_units
+        inputs_mul_c = tf.complex( inputs_mul[:, :self.state_size], 
+                                   inputs_mul[:, self.state_size:] )
+        # batch_sz x num_units
+
+        # STATE: all complex
+        # batch_sz x num_units !!!!!!!!!!!!!!!!
+        state_mul = self.D1.mul(state)
+
+        state_mul = fft(state_mul)
+
+        state_mul = self.R1.mul(state_mul)
+
+        state_mul = tf.transpose(tf.random_shuffle(tf.transpose(state_mul))) # permuts columns
+
+        state_mul = self.D2.mul(state_mul)
+
+        state_mul = ifft(state_mul)
+
+        state_mul = self.R2.mul(state_mul)
+
+
+        state_mul = self.D3.mul(state_mul) 
+        # batch_sz x num_units !!!!!!!!!!!!!!!!
+        
         # FINALIZE
-        preact = state_mul + inputs_mul + self.b_h
-        # num_units x batch_sz
+        preact = inputs_mul_c + state_mul
+        # batch_sz x num_units
 
-        output = tf.transpose(self.activation(preact))
-        return output, output
+        out_state = modReLU(preact, self.b_h) # bsz x numunits complex
+        output = tf.concat([tf.real(out_state), tf.imag(out_state)], 1)
 
+        # output is 2*num_units R, but the outside network is ready for that (uses self.output_size everywhere)
+            # maybe this is wrong but nvm for now
+        # out_state is num_units C
+        return output, out_state

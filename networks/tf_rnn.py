@@ -18,6 +18,8 @@ class TFRNN:
 
         self.loss_list = []
 
+        init_state_C = np.sqrt(3 / (2 * num_hidden))
+      
         # OVDE TREBA DA SE PROSLEDI MIDZI I INPUT SIZE input_size = num_in AKO JE MIDZIN
         self.cell = rnn_cell(num_units = num_hidden, activation = activation_hidden)   
         # [batch_size, max_time, num_in]   
@@ -33,8 +35,8 @@ class TFRNN:
         self.state_type = state_type
 
         # set up parameters
-        self.w_ho = tf.Variable(tf.random_uniform([num_out, self.cell.output_size], minval=-1, maxval=1), 
-            dtype=tf.float32, name="w_ho")
+        self.w_ho = tf.get_variable("w_ho", shape=[num_out, self.cell.output_size], 
+                                            initializer=tf.contrib.layers.xavier_initializer()) # fixme
         self.b_o = tf.Variable(tf.zeros(num_out, 1),
            dtype=tf.float32, name="b_o")
 
@@ -70,7 +72,6 @@ class TFRNN:
 
                 for batch_idx in range(num_batches):
                     X_batch, Y_batch = dataset.get_batch(batch_idx, batch_size)
-
                     # ne mzoe 
                     # init_state = np.zeros((batch_size, self.cell.state_size), dtype=self.state_type)
                     init_state_dim = [batch_size]
@@ -94,7 +95,7 @@ class TFRNN:
                         # mozda ovde da ga evaluiram
                         # end of epoch eval
 
-                init_state_dim = [batch_size]
+                init_state_dim = [X_test.shape[0]]
                 for x in list(self.cell.state_size):
                     init_state_dim.append(x)
                 # print(init_state_dim)
