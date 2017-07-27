@@ -9,7 +9,7 @@ class KerasLSTM():
 
         self.input = keras.layers.Input(
             (self.timesteps, self.input_dim))
-        self.hidden = keras.layers.recurrent.LSTM(
+        self.hidden = keras.layers.recurrent.SimpleRNN(
             self.hidden_size,
             activation='tanh',
             recurrent_activation='sigmoid',
