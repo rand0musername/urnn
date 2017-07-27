@@ -21,6 +21,7 @@ class TFRNN:
         self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_desired] if single_output else [None, None, num_desired], name="input_y")
         self.init_state = tf.placeholder(state_type, [None, self.cell.state_size], name="init_state")
+        self.state_type = state_type
 
         # set up parameters
         self.w_ho = tf.Variable(tf.random_uniform([num_out, self.cell.output_size], minval=-1, maxval=1), 
@@ -68,7 +69,7 @@ class TFRNN:
                     if batch_idx%100 == 0:
                         print("Step",batch_idx, "Loss", _total_loss)
                 # end of epoch eval
-                init_state = np.zeros((batch_size, self.cell.state_size), dtype=tf.complex64)
+                init_state = np.zeros((batch_size, self.cell.state_size), dtype=self.state_type)
                 _total_loss, _ = sess.run([self.total_loss, self.train_step],
                     feed_dict={
                         self.input_x: X_test,
