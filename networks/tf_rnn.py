@@ -20,6 +20,7 @@ class TFRNN:
         # [batch_size, max_time, num_in]   
         self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_desired] if single_output else [None, None, num_desired], name="input_y")
+        self.init_state = tf.placeholder(state_type, [None, self.cell.state_size], name="init_state")
 
         # set up parameters
         self.w_ho = tf.Variable(tf.random_uniform([num_out, self.cell.output_size], minval=-1, maxval=1), 
@@ -54,10 +55,12 @@ class TFRNN:
                 for batch_idx in range(num_batches):
                     X_batch, Y_batch = dataset.get_batch(batch_idx, batch_size)
 
+                    init_state = np.zeros((batch_size, self.cell.state_size), dtype=tf.complex64)
                     _total_loss, _ = sess.run([self.total_loss, self.train_step],
                         feed_dict={
                             self.input_x: X_batch,
-                            self.input_y: Y_batch
+                            self.input_y: Y_batch,
+                            self.init_state: init_state
                         })
 
                     self.loss_list.append(_total_loss)
@@ -65,10 +68,12 @@ class TFRNN:
                     if batch_idx%100 == 0:
                         print("Step",batch_idx, "Loss", _total_loss)
                 # end of epoch eval
+                init_state = np.zeros((batch_size, self.cell.state_size), dtype=tf.complex64)
                 _total_loss, _ = sess.run([self.total_loss, self.train_step],
                     feed_dict={
                         self.input_x: X_test,
-                        self.input_y: Y_test
+                        self.input_y: Y_test,
+                        self.init_state: init_state
                     })
                 print("End of epoch, loss on training set: ", np.mean(self.loss_list), "loss on test set: ", _total_loss)
 
