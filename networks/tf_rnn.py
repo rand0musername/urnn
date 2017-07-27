@@ -1,13 +1,13 @@
 import numpy as np
 import tensorflow as tf
-
+from urnn_cell import URNNCell
 class TFRNN:
     def __init__(
         self,
         num_in,
         num_hidden, 
         num_out,
-        num_desired=1, # class
+        num_target,
         single_output=True,
         state_type = tf.float32,
         rnn_cell=tf.contrib.rnn.BasicRNNCell,
@@ -17,14 +17,17 @@ class TFRNN:
         loss_function=tf.squared_difference):
 
         self.loss_list = []
+        self.init_state_C = np.sqrt(3 / (2 * num_hidden))
 
-        init_state_C = np.sqrt(3 / (2 * num_hidden))
+        # init cell
+        cell_dict = {'num_units': num_hidden, 'activation': activation_hidden}
+        if rnn_cell == URNNCell:
+            cell_dict['input_size'] = num_in
+        self.cell = rnn_cell(cell_dict)
       
-        # OVDE TREBA DA SE PROSLEDI MIDZI I INPUT SIZE input_size = num_in AKO JE MIDZIN
-        self.cell = rnn_cell(num_units = num_hidden, activation = activation_hidden)   
-        # [batch_size, max_time, num_in]   
+        # input_x: [batch_size, max_time, num_in]
         self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x")
-        self.input_y = tf.placeholder(tf.float32, [None, num_desired] if single_output else [None, None, num_desired], name="input_y")
+        self.input_y = tf.placeholder(tf.float32, [None, num_target] if single_output else [None, None, num_target], name="input_y")
         
         init_state_dim = [None]
         for x in list(self.cell.state_size):

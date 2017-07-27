@@ -26,31 +26,31 @@ class Main:
         #finish this function
         print('Initializing networks...')
         #rnn = AddingProblemRNN(input_dim, hidden_size, output_dim)
-        # self.ap_lstm = TFRNN(
-        #     num_in = 2,
-        #     num_hidden = 128,
-        #     num_out = 1,
-        #     num_desired = 1,
-        #     single_output = True,
-        #     state_type = tf.float32,
-        #     rnn_cell=tf.contrib.rnn.LSTMCell,
-        #     activation_hidden=tf.tanh,
-        #     activation_out=tf.identity,
-        #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
-        #     loss_function=tf.squared_difference)
-
-        self.cmp_lstm = TFRNN(
-            num_in = 1,
+        self.ap_lstm = TFRNN(
+            num_in = 2,
             num_hidden = 128,
             num_out = 1,
-            num_desired = 1,
-            single_output = False,
+            num_target = 1,
+            single_output = True,
             state_type = tf.float32,
             rnn_cell=tf.contrib.rnn.LSTMCell,
             activation_hidden=tf.tanh,
             activation_out=tf.identity,
             optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
             loss_function=tf.squared_difference)
+
+        # self.cmp_lstm = TFRNN(
+        #     num_in = 1,
+        #     num_hidden = 128,
+        #     num_out = 1,
+        #     num_target = 1,
+        #     single_output = False,
+        #     state_type = tf.float32,
+        #     rnn_cell=tf.contrib.rnn.LSTMCell,
+        #     activation_hidden=tf.tanh,
+        #     activation_out=tf.identity,
+        #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
+        #  loss_function=tf.squared_difference)
 
         print('Done.')
     def train_networks(self):
@@ -62,8 +62,8 @@ class Main:
         # self.ap_lstm.train(AddingProblemDataset(10000, 100), 100, 40)
         # loss = self.ap_lstm.get_loss_list()
 
-        self.cmp_lstm.train(CopyingMemoryProblemDataset(10000, 50), 50, 40)
-        loss = self.cmp_lstm.get_loss_list()
+        self.ap_lstm.train(self.apds[0], 50, 40)
+        loss = self.ap_lstm.get_loss_list()
 
         file = open('some_loss.txt', 'w')
         for item in loss:
