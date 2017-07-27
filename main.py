@@ -22,56 +22,59 @@ class Main:
 
         print('Done.')
 
-    def init_networks(self): # FINISH THIS SHIT IS NOT DONE
+    def init_networks(self):
+        #finish this function
         print('Initializing networks...')
-        batch_size = 20
-        epochs = 20
         #rnn = AddingProblemRNN(input_dim, hidden_size, output_dim)
-        ap_lstm = TFRNN(
-            num_in = 2,
+        # self.ap_lstm = TFRNN(
+        #     num_in = 2,
+        #     num_hidden = 128,
+        #     num_out = 1,
+        #     num_desired = 1,
+        #     single_output = True,
+        #     state_type = tf.float32,
+        #     rnn_cell=tf.contrib.rnn.LSTMCell,
+        #     activation_hidden=tf.tanh,
+        #     activation_out=tf.identity,
+        #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
+        #     loss_function=tf.squared_difference)
+
+        self.cmp_lstm = TFRNN(
+            num_in = 1,
             num_hidden = 128,
             num_out = 1,
             num_desired = 1,
-            single_output = True,
+            single_output = False,
+            state_type = tf.float32,
             rnn_cell=tf.contrib.rnn.LSTMCell,
             activation_hidden=tf.tanh,
             activation_out=tf.identity,
             optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
             loss_function=tf.squared_difference)
 
-        ap_basic_rnn = TFRNN(
-            num_in = 2,
-            num_hidden = 128,
-            num_out = 1,
-            num_desired = 1,
-            single_output = True,
-            rnn_cell=tf.contrib.rnn.BasicRNNCell,
-            activation_hidden=tf.tanh,
-            activation_out=tf.identity,
-            optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
-            loss_function=tf.squared_difference)
+        print('Done.')
+    def train_networks(self):
+        print('Staring training...')
+        batch_size = 20
+        epochs = 20
 
+        # loss = self.ap_lstm.get_loss_list()
+        # self.ap_lstm.train(AddingProblemDataset(10000, 100), 100, 40)
+        # loss = self.ap_lstm.get_loss_list()
 
-        # ap_lstm.train(adding_problem_dataset, batch_size, epochs)
-        # ap_basic_rnn.train(adding_problem_dataset, batch_size, epochs)
-        # ap_basic_rnn_loss = ap_basic_rnn.get_loss_list()
+        self.cmp_lstm.train(CopyingMemoryProblemDataset(10000, 50), 50, 40)
+        loss = self.cmp_lstm.get_loss_list()
 
-        # file = open('ap_basic_rnn_loss.txt', 'w')
-        # for item in ap_basic_rnn_loss:
-        #     file.write("%s\n" % item)
+        file = open('some_loss.txt', 'w')
+        for item in loss:
+            file.write("%s\n" % item)
 
-
-        # ap_lstm.train(adding_problem_dataset, batch_size, epochs)
-        # ap_lstm_loss = ap_lstm.get_loss_list()
-
-        # file = open('ap_ap_lstm_loss.txt', 'w')
-        # for item in ap_lstm_loss:
-        #     file.write("%s\n" % item)
         print('Done.')
 
 main = Main()
 main.init_data()
 main.init_networks()
+main.train_networks()
 
 
 """
@@ -89,5 +92,5 @@ def test_keras_lstm():
 
     keras_lstm = KerasLSTM(input_dim, output_dim, hidden_size, timesteps)
     keras_lstm.train(adding_problem_dataset, batch_size, epochs)
-"""
+    """
 
