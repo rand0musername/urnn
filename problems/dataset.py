@@ -1,9 +1,6 @@
 class Dataset():
-	def __init__self():
-		pass
-
-	def create():
-		pass
-
+	def __init__(self):
+		raise NotImplementedError()
+		
 	def load_data():
-		pass
+		raise NotImplementedError()

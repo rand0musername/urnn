@@ -1,26 +1,19 @@
 from problems.adding_problem import *
-from lstm.lstm import LSTM
+from networks.keras_lstm import KerasLSTM
 
-num_samples = 100000
-input_dim = 2
-# output_dim = 250
-timesteps = 20
-batch_size = 20
-epochs = 10
+num_samples = 10000
+seq_len = 50
+adding_problem_dataset = AddingProblemDataset(num_samples, seq_len)
 
-apd = AddingProblemDataset()
-apd.create(num_samples, timesteps)
+def test_keras_lstm():
+	input_dim = 2
+	output_dim = 1
+	hidden_size = 128
+	timesteps = seq_len
+	batch_size = seq_len
+	epochs = 20
 
-l = LSTM(batch_size, epochs, timesteps, input_dim)
-l.run(apd)
+	keras_lstm = KerasLSTM(input_dim, output_dim, hidden_size, timesteps)
+	keras_lstm.train(adding_problem_dataset, batch_size, epochs)
 
-# Testing LSTM on fake problem
-
-# outputs = 1
-# inputs = 5
-# examples = 1000
-# sequence_length = 10
-# from problems.test_problem import DataProvider
-# dp = DataProvider(examples, sequence_length, 1, outputs)
-# l2 = LSTM(examples, 100, sequence_length, 1)
-# l2.run(dp)
+test_keras_lstm()
