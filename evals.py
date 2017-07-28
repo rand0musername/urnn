@@ -68,8 +68,50 @@ class Main:
         serialize_loss(net.get_loss_list(), net.name + sample_len)
         print('Training network ', net.name, ' done.')
 
-    def train_networks_for_timestep_idx(self, idx):
-        print('Initializing and training networks for one timestep...')
+    def train_urnn_for_timestep_idx(self, idx):
+        print('Initializing and training URNNs for one timestep...')
+
+        # CM
+
+        tf.reset_default_graph()
+        self.cm_urnn=TFRNN(
+            name="cm_urnn",
+            num_in=1,
+            num_hidden=128,
+            num_out=10,
+            num_target=1,
+            single_output=False,
+            rnn_cell=URNNCell,
+            activation_hidden=None, # modReLU
+            activation_out=tf.identity,
+            optimizer=tf.train.RMSPropOptimizer(learning_rate=glob_learning_rate, decay=glob_decay),
+            loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
+        self.train_network(self.cm_urnn, self.cm_data[idx], 
+                           self.cm_batch_size, self.cm_epochs)
+
+        # AP
+
+        tf.reset_default_graph()
+        self.ap_urnn=TFRNN(
+            name="ap_urnn",
+            num_in=2,
+            num_hidden=512,
+            num_out=1,
+            num_target=1,
+            single_output=True,
+            rnn_cell=URNNCell,
+            activation_hidden=None, # modReLU
+            activation_out=tf.identity,
+            optimizer=tf.train.RMSPropOptimizer(learning_rate=glob_learning_rate, decay=glob_decay),
+            loss_function=tf.squared_difference)
+        self.train_network(self.ap_urnn, self.ap_data[idx], 
+                           self.ap_batch_size, self.ap_epochs)
+
+        print('Init and training URNNs for one timestep done.')
+
+
+    def train_rnn_lstm_for_timestep_idx(self, idx):
+        print('Initializing and training RNN&LSTM for one timestep...')
 
         # CM
 
@@ -103,22 +145,6 @@ class Main:
             optimizer=tf.train.RMSPropOptimizer(learning_rate=glob_learning_rate, decay=glob_decay),
             loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
         self.train_network(self.cm_lstm, self.cm_data[idx], 
-                           self.cm_batch_size, self.cm_epochs)
-
-        tf.reset_default_graph()
-        self.cm_urnn=TFRNN(
-            name="cm_urnn",
-            num_in=1,
-            num_hidden=128,
-            num_out=10,
-            num_target=1,
-            single_output=False,
-            rnn_cell=URNNCell,
-            activation_hidden=None, # modReLU
-            activation_out=tf.identity,
-            optimizer=tf.train.RMSPropOptimizer(learning_rate=glob_learning_rate, decay=glob_decay),
-            loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
-        self.train_network(self.cm_urnn, self.cm_data[idx], 
                            self.cm_batch_size, self.cm_epochs)
 
         # AP
@@ -155,22 +181,6 @@ class Main:
         self.train_network(self.ap_lstm, self.ap_data[idx], 
                            self.ap_batch_size, self.ap_epochs)
 
-        tf.reset_default_graph()
-        self.ap_urnn=TFRNN(
-            name="ap_urnn",
-            num_in=2,
-            num_hidden=512,
-            num_out=1,
-            num_target=1,
-            single_output=True,
-            rnn_cell=URNNCell,
-            activation_hidden=None, # modReLU
-            activation_out=tf.identity,
-            optimizer=tf.train.RMSPropOptimizer(learning_rate=glob_learning_rate, decay=glob_decay),
-            loss_function=tf.squared_difference)
-        self.train_network(self.ap_urnn, self.ap_data[idx], 
-                           self.ap_batch_size, self.ap_epochs)
-
         print('Init and training networks for one timestep done.')
 
     def train_networks(self):
@@ -178,7 +188,9 @@ class Main:
 
         timesteps_idx=4
         for i in range(timesteps_idx):
-            main.train_networks_for_timestep_idx(i)
+            main.train_urnn_for_timestep_idx(i)
+        for i in range(timesteps_idx):
+            main.train_rnn_lstm_for_timestep_idx(i)
 
         print('Done and done.')
 
