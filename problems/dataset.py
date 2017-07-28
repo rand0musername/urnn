@@ -9,7 +9,7 @@ class Dataset:
     def generate(self, num_samples):
     	raise NotImplementedError()
 
-    def load_data(self):
+    def get_data(self):
         return self.X_train, self.Y_train, self.X_valid, self.Y_valid, self.X_test, self.Y_test
     
     def get_validation_data(self):
@@ -29,4 +29,3 @@ class Dataset:
         Y_batch = self.Y_train[start_idx:end_idx, :]
 
         return X_batch, Y_batch
-

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from urnn_cell import URNNCell
+from .urnn_cell import URNNCell
+
 class TFRNN:
     def __init__(
         self,
@@ -16,107 +17,152 @@ class TFRNN:
         optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
         loss_function=tf.squared_difference):
 
+        # self
         self.loss_list = []
         self.init_state_C = np.sqrt(3 / (2 * num_hidden))
 
         # init cell
-        cell_dict = {'num_units': num_hidden, 'activation': activation_hidden}
+        # cell_dict = {'num_units': num_hidden, 'activation': activation_hidden}
         if rnn_cell == URNNCell:
-            cell_dict['input_size'] = num_in
-        self.cell = rnn_cell(cell_dict)
+            # cell_dict['input_size'] = num_in
+            # del cell_dict['activation']
+            self.cell = rnn_cell(num_units = num_hidden, input_size = num_in)
+        else:
+            self.cell = rnn_cell(num_units = num_hidden, activation = activation_hidden)
+
+        # extract output size
+        self.output_size = self.cell.output_size
+        if type(self.output_size) == dict:
+            self.output_size = self.output_size['num_units']
       
         # input_x: [batch_size, max_time, num_in]
+        # input_y: [batch_size, max_time, num_target] or [batch_size, num_target]
         self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_target] if single_output else [None, None, num_target], name="input_y")
         
-        init_state_dim = [None]
-        for x in list(self.cell.state_size):
-            init_state_dim.append(x)
-        # print(init_state_dim)
+        # rnn initial state(s)
+        self.init_states = []
+        for state_dim in list(self.cell.state_size):
+            if type(state_dim) == dict:
+                state_size = state_dim['num_units']
+            else:
+                state_size = state_dim
+            init_state = tf.placeholder(state_type, [None, state_size], name="init_state")
+            self.init_states.append(init_state)
 
-        self.init_state = tf.placeholder(state_type, init_state_dim, name="init_state")
-        self.state_type = state_type
-
-        # set up parameters
-        self.w_ho = tf.get_variable("w_ho", shape=[num_out, self.cell.output_size], 
+        # set up h->o parameters
+        self.w_ho = tf.get_variable("w_ho", shape=[num_out, self.output_size], 
                                             initializer=tf.contrib.layers.xavier_initializer()) # fixme
-        self.b_o = tf.Variable(tf.zeros(num_out, 1),
-           dtype=tf.float32, name="b_o")
+        self.b_o = tf.Variable(tf.zeros([num_out, 1]), name="b_o")
 
-        # [batch_size, max_time, self.cell.output_size]
-        outputs_h, state = tf.nn.dynamic_rnn(self.cell, self.input_x, # INITIAL STATE!!!
-          dtype = tf.float32)
+        # run the dynamic rnn and get hidden layer outputs
+        # outputs_h: [batch_size, max_time, self.output_size]
+        dyn_rnn_init_states = tuple(self.init_states) if len(self.init_states)>1 else self.init_states[0]
+        outputs_h, _ = tf.nn.dynamic_rnn(self.cell, self.input_x, dtype=tf.float32) 
+        # returns (outputs, state)
 
-        # IF ONLY LAST
+        # produce final outputs from hidden layer outputs
         if single_output:
-            outputs_h = outputs_h[:, -1, :] # batch_size x 1 x self.cell.output_size
-            # za sve ove 
-            outputs_h = tf.transpose(tf.reshape(outputs_h, (-1, self.cell.output_size))) # cellout x batch
-            outputs_o = tf.transpose(activation_out(tf.matmul(self.w_ho, outputs_h) + self.b_o))
+            outputs_h = tf.reshape(outputs_h[:, -1, :], [-1, self.output_size])
+            # outputs_h: [batch_size, self.output_size]
+            preact = tf.matmul(outputs_h, tf.transpose(self.w_ho)) + tf.transpose(self.b_o)
+            outputs_o = activation_out(preact) # [batch_size, num_out]
         else:
-            #outputs_h = tf.transpose(outputs_h)
-            outputs_o = tf.transpose(activation_out(tf.matmul(tf.expand_dims(self.w_ho, 0), outputs_h) + self.b_o))
-        # batch_size x num_out
+            w_ho_deep = tf.reshape(tf.transpose(self.w_ho), [1, self.output_size, num_out]) # .... isto kao dole
+            #w_ho_deep = tf.tile(w_ho_deep, [batch_size, 1, 1])
 
-        # losses and train step
-        self.total_loss = tf.reduce_mean(loss_function(outputs_o, self.input_y))
+            preact = tf.matmul(outputs_h, w_ho_deep) + self.b_o
+            outputs_o = activation_out(preact) # [batch_size, time_step, num_out]
+            # TODO solve this
+
+        # calculate losses and set up optimizer
+
+        # loss function is usually one of these two:
+        #   tf.nn.sparse_softmax_cross_entropy_with_logits 
+        #     (classification, num_out = num_classes, num_target = 1)
+        #   tf.squared_difference 
+        #     (regression, num_out = num_target)
+
+        if loss_function == tf.squared_difference:
+            self.total_loss = tf.reduce_mean(loss_function(outputs_o, self.input_y))
+        elif loss_function == tf.nn.sparse_softmax_cross_entropy_with_logits:
+            prepared_labels = tf.cast(tf.squeeze(self.input_y), tf.int32)
+            self.total_loss = tf.reduce_mean(loss_function(logits=outputs_o, labels=prepared_labels))
+        else:
+            raise Exception('New loss function')
+
         self.train_step = optimizer.minimize(self.total_loss, name='Optimizer')
 
     def train(self, dataset, batch_size, epochs):
+        # session
         with tf.Session() as sess:
+            # initialize global vars
             sess.run(tf.global_variables_initializer())
-            self.loss_list = []
-            num_batches = dataset.get_batch_count(batch_size)
-            X_test, Y_test = dataset.get_test_data()
 
+            # fetch validation and test sets
+            num_batches = dataset.get_batch_count(batch_size)
+            X_val, Y_val = dataset.get_validation_data()
+
+            # init loss list
+            self.loss_list = []
+
+            # train for several epochs
             for epoch_idx in range(epochs):
 
                 print("New epoch", epoch_idx)
-
+                # train on several minibatches
                 for batch_idx in range(num_batches):
+
+                    # get one batch of data
+                    # X_batch: [batch_size x time x num_in]
+                    # Y_batch: [batch_size x time x num_target] or [batch_size x num_target] (single_output?)
                     X_batch, Y_batch = dataset.get_batch(batch_idx, batch_size)
-                    # ne mzoe 
-                    # init_state = np.zeros((batch_size, self.cell.state_size), dtype=self.state_type)
-                    init_state_dim = [batch_size]
-                    for x in list(self.cell.state_size):
-                        init_state_dim.append(x)
-                    # print(init_state_dim)
-                    # print(self.state_type)
-                    # init_state = tf.zeros(init_state_dim, dtype=self.state_type)
-                    init_state = np.zeros(tuple(init_state_dim))
-                    _total_loss, _ = sess.run([self.total_loss, self.train_step],
-                        feed_dict={
-                        self.input_x: X_batch,
-                        self.input_y: Y_batch,
-                        self.init_state: init_state
-                        })
 
-                    self.loss_list.append(_total_loss)
+                    # evaluate!
+                    batch_loss = self.evaluate(sess, X_batch, Y_batch, training=True)
 
+                    # save the loss for later
+                    self.loss_list.append(batch_loss)
+
+                    # plot
                     if batch_idx%10 == 0:
-                        print("Step",batch_idx, "Loss", _total_loss)
-                        # mozda ovde da ga evaluiram
-                        # end of epoch eval
+                        print("Step:", batch_idx, "Loss:", batch_loss)
 
-                init_state_dim = [X_test.shape[0]]
-                for x in list(self.cell.state_size):
-                    init_state_dim.append(x)
-                # print(init_state_dim)
-                # print(self.state_type)
-                # init_state = tf.zeros(init_state_dim, dtype=self.state_type)
-                init_state = np.zeros(tuple(init_state_dim))
-                _total_loss, _ = sess.run([self.total_loss, self.train_step],
-                    feed_dict={
-                        self.input_x: X_test, # TODO ne test
-                        self.input_y: Y_test,
-                        self.init_state: init_state
-                        })
-                print("End of epoch, loss on training set: ", np.mean(self.loss_list), "loss on test set: ", _total_loss)
+                # validate after each epoch
+                validation_loss = self.evaluate(sess, X_val, Y_val)
+                mean_epoch_loss = np.mean(self.loss_list[-num_batches])
+                print("End of epoch, mean epoch loss:", mean_epoch_loss, "loss on val. set:", validation_loss)
 
+    def test(self, dataset, batch_size, epochs):
+        # session
+        with tf.Session() as sess:
+            # initialize global vars
+            sess.run(tf.global_variables_initializer())
+
+            # fetch validation and test sets
+            X_test, Y_test = dataset.get_test_data()
+
+            test_loss = self.evaluate(sess, X_test, Y_test)
+            print("Test set loss:", test_loss)
+
+    def evaluate(self, sess, X, Y, training=False):
+
+        # fill (X,Y) placeholders
+        feed_dict = {self.input_x: X, self.input_y: Y}
+        batch_size = X.shape[0]
+
+        # fill initial state
+        for init_state in self.init_states:
+            # init_state: [batch_size x cell.state_size[i]]
+            feed_dict[init_state] = np.random.uniform(-self.init_state_C, self.init_state_C, [batch_size, init_state.shape[1]])
+
+        # run and return the loss
+        if training:
+            loss, _ = sess.run([self.total_loss, self.train_step], feed_dict)
+        else:
+            loss = sess.run([self.total_loss], feed_dict)
+        return loss
+
+    # loss list getter
     def get_loss_list(self):
         return self.loss_list
-
-
-
-
-
