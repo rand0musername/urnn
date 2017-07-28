@@ -25,11 +25,23 @@ class ReflectionMatrix():
         self.vstar = tf.conj(self.v) # [num_units]
         # normalize?!
 
+
+    # [batch_sz, num_units]
+    def mul_new(self, z):
+        v = tf.expand_dims(self.v, 1) # [num_units, 1]
+        vstar = tf.conj(v) # [num_units, 1]
+        sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
+        vstar_v = tf.matmul(z, vstar) #[batch_size, 1]
+        return z - (2 / sq_norm) * tf.matmul(vstar_v, tf.transpose(v))
+
     # [batch_sz, num_units]
     def mul(self, z): 
+        # z - (2 / |v|^2) * v * v* * z
+
         # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
-        sq_norm_ind = tf.abs(self.v)**2
-        sq_norm = tf.reduce_sum(sq_norm_ind) # [1]
+
+        sq_norm_ind = 
+        sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
         
         vstar_z = tf.reduce_sum(self.vstar * z, 1) # [batch_sz]
         vstar_z = tf.reshape(vstar_z, [-1, 1]) # [batch_sz * 1]
@@ -112,7 +124,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     @property
     def state_size(self):
-        return self._state_size # complex
+        return self._state_size # real
 
     @property
     def output_size(self):
@@ -145,11 +157,11 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
         state_mul = self.D1.mul(state_c)
         state_mul = FFT(state_mul)
-        state_mul = self.R1.mul(state_mul)
+        state_mul = self.R1.mul_new(state_mul)
         state_mul = self.P.mul(state_mul)
         state_mul = self.D2.mul(state_mul)
         state_mul = IFFT(state_mul)
-        state_mul = self.R2.mul(state_mul)
+        state_mul = self.R2.mul_new(state_mul)
         state_mul = self.D3.mul(state_mul) 
         # [batch_sz, num_units]
         
