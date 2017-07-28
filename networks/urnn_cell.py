@@ -43,30 +43,27 @@ class PermutationMatrix:
     def __init__(self, name, num_units):
         self.num_units = num_units
         perm = np.random.permutation(num_units)
-        i_perm = np.arange(num_units)
         self.P = tf.constant(perm, tf.int32)
-        self.E = tf.constant(i_perm, tf.int32)
-        self.i = [[elem] for elem in range(num_units)]
 
     # [batch_sz, num_units], permute columns
     def mul(self, z): 
-        # return tf.transpose(tf.gather(tf.transpose(z), self.P))
-        z = tf.transpose(z)
-        parts = tf.dynamic_partition(z, self.P, self.num_units)
-        stitched = tf.dynamic_stitch(self.i, parts)
-        stitched = tf.reshape(stitched, [self.num_units, -1])
-        return tf.transpose(stitched)
+        return tf.transpose(tf.gather(tf.transpose(z), self.P))
+        
+		# self.i = [[elem] for elem in range(num_units)]
+		#z = tf.transpose(z)
+        #parts = tf.dynamic_partition(z, self.P, self.num_units)
+        #stitched = tf.dynamic_stitch(self.i, parts)
+        #stitched = tf.reshape(stitched, [self.num_units, -1])
+        #return tf.transpose(stitched)
 
 # FFTs
 # z: complex[batch_sz, num_units]
-# does FFT over rows, transpose?!
-# no scaling?!
 
 def FFT(z):
-    return tf.fft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
+    return tf.fft(z) 
 
 def IFFT(z):
-    return tf.ifft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
+    return tf.ifft(z) 
 
 # z: complex[batch_sz, num_units]
 # bias: real[num_units]
@@ -87,7 +84,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     def __init__(self, num_units, num_in, reuse=None):
         super(URNNCell, self).__init__(_reuse=reuse)
-        
+        print('a')
         # save class variables
         self._num_in = num_in
         self._num_units = num_units
