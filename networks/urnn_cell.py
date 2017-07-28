@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
- 
+
 # Diagonal unitary matrix
 class DiagonalMatrix():
     def __init__(self, name, num_units):
@@ -22,25 +22,26 @@ class ReflectionMatrix():
         self.re = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_re")
         self.im = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_im")
         self.v = tf.complex(self.re, self.im) # [num_units]
+        # self.v = normalize(self.v)
         self.vstar = tf.conj(self.v) # [num_units]
         # normalize?!
 
-
     # [batch_sz, num_units]
-    def mul_new(self, z):
+    def mul(self, z):
         v = tf.expand_dims(self.v, 1) # [num_units, 1]
         vstar = tf.conj(v) # [num_units, 1]
+        vstar_z = tf.matmul(z, vstar) #[batch_size, 1]
         sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
-        vstar_v = tf.matmul(z, vstar) #[batch_size, 1]
-        return z - (2 / sq_norm) * tf.matmul(vstar_v, tf.transpose(v))
+        factor = (2 / tf.complex(sq_norm, 0.0))
+        return z - factor * tf.matmul(vstar_z, tf.transpose(v))
 
-    # [batch_sz, num_units]
+    '''
+	# [batch_sz, num_units]
     def mul(self, z): 
         # z - (2 / |v|^2) * v * v* * z
 
         # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
 
-        sq_norm_ind = 
         sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
         
         vstar_z = tf.reduce_sum(self.vstar * z, 1) # [batch_sz]
@@ -49,6 +50,7 @@ class ReflectionMatrix():
         prod = self.v * tf.tile(vstar_z, [1, self.num_units]) # [batch_sz * num_units]
         
         return z - 2 * prod / tf.complex(sq_norm, 0.0) # [batch_sz * num_units]
+	'''
 
 # Permutation unitary matrix
 class PermutationMatrix:
@@ -76,6 +78,11 @@ def FFT(z):
 
 def IFFT(z):
     return tf.ifft(z) 
+	
+def normalize(z):
+    norm = tf.sqrt(tf.reduce_sum(tf.abs(z)**2))
+    factor = (norm + 1e-6)
+    return tf.complex(tf.real(z) / factor, tf.imag(z) / factor)
 
 # z: complex[batch_sz, num_units]
 # bias: real[num_units]
@@ -96,7 +103,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     def __init__(self, num_units, num_in, reuse=None):
         super(URNNCell, self).__init__(_reuse=reuse)
-        print('a')
+        print('hi from urnn cell')
         # save class variables
         self._num_in = num_in
         self._num_units = num_units
@@ -157,11 +164,11 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
         state_mul = self.D1.mul(state_c)
         state_mul = FFT(state_mul)
-        state_mul = self.R1.mul_new(state_mul)
+        state_mul = self.R1.mul(state_mul)
         state_mul = self.P.mul(state_mul)
         state_mul = self.D2.mul(state_mul)
         state_mul = IFFT(state_mul)
-        state_mul = self.R2.mul_new(state_mul)
+        state_mul = self.R2.mul(state_mul)
         state_mul = self.D3.mul(state_mul) 
         # [batch_sz, num_units]
         
