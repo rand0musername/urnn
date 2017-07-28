@@ -58,14 +58,12 @@ class PermutationMatrix:
 
 # FFTs
 # z: complex[batch_sz, num_units]
-# does FFT over rows, transpose?!
-# no scaling?!
 
 def FFT(z):
-    return tf.fft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
+    return tf.fft(z) 
 
 def IFFT(z):
-    return tf.ifft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
+    return tf.ifft(z) 
 
 # z: complex[batch_sz, num_units]
 # bias: real[num_units]
@@ -86,7 +84,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     def __init__(self, num_units, num_in, reuse=None):
         super(URNNCell, self).__init__(_reuse=reuse)
-        
+        print('a')
         # save class variables
         self._num_in = num_in
         self._num_units = num_units
