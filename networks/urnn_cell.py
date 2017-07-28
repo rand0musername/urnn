@@ -43,19 +43,18 @@ class PermutationMatrix:
     def __init__(self, name, num_units):
         self.num_units = num_units
         perm = np.random.permutation(num_units)
-        i_perm = np.arange(num_units)
         self.P = tf.constant(perm, tf.int32)
-        self.E = tf.constant(i_perm, tf.int32)
-        self.i = [[elem] for elem in range(num_units)]
 
     # [batch_sz, num_units], permute columns
     def mul(self, z): 
-        # return tf.transpose(tf.gather(tf.transpose(z), self.P))
-        z = tf.transpose(z)
-        parts = tf.dynamic_partition(z, self.P, self.num_units)
-        stitched = tf.dynamic_stitch(self.i, parts)
-        stitched = tf.reshape(stitched, [self.num_units, -1])
-        return tf.transpose(stitched)
+        return tf.transpose(tf.gather(tf.transpose(z), self.P))
+        
+		# self.i = [[elem] for elem in range(num_units)]
+		#z = tf.transpose(z)
+        #parts = tf.dynamic_partition(z, self.P, self.num_units)
+        #stitched = tf.dynamic_stitch(self.i, parts)
+        #stitched = tf.reshape(stitched, [self.num_units, -1])
+        #return tf.transpose(stitched)
 
 # FFTs
 # z: complex[batch_sz, num_units]
