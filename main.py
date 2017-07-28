@@ -39,33 +39,48 @@ class Main:
         #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
         #     loss_function=tf.squared_difference)
 
-        self.ap_urnn = TFRNN(
-            name="ap_urnn",
-            num_in = 2,
-            num_hidden = 512,
-            num_out = 1,
-            num_target = 1,
-            single_output = True,
-            state_type = tf.complex64,
-            rnn_cell=URNNCell,
-            activation_hidden=None, # modrelu
-            activation_out=tf.identity,
-            optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
-            loss_function=tf.squared_difference)
-
-        # self.cmp_lstm = TFRNN(
-        #     name="cmp_lstm",
-        #     num_in = 1,
-        #     num_hidden = 40,
-        #     num_out = 10,
+        # self.ap_urnn = TFRNN(
+        #     name="ap_urnn",
+        #     num_in = 2,
+        #     num_hidden = 512,
+        #     num_out = 1,
         #     num_target = 1,
-        #     single_output = False,
-        #     state_type = tf.float32,
-        #     rnn_cell=tf.contrib.rnn.LSTMCell,
-        #     activation_hidden=tf.tanh,
+        #     single_output = True,
+        #     state_type = tf.complex64,
+        #     rnn_cell=URNNCell,
+        #     activation_hidden=None, # modrelu
         #     activation_out=tf.identity,
         #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
-        #     loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
+        #     loss_function=tf.squared_difference)
+
+        self.cmp_lstm = TFRNN(
+            name="cmp_lstm",
+            num_in = 1,
+            num_hidden = 40,
+            num_out = 10,
+            num_target = 1,
+            single_output = False,
+            state_type = tf.float32,
+            rnn_cell=tf.contrib.rnn.LSTMCell,
+            activation_hidden=tf.tanh,
+            activation_out=tf.identity,
+            optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
+            loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
+
+
+        self.cmp_urnn = TFRNN(
+            name="cmp_urnn",
+            num_in = 1,
+            num_hidden = 128,
+            num_out = 10,
+            num_target = 1,
+            single_output = False,
+            state_type = tf.float32,
+            rnn_cell=URNNCell,
+            activation_hidden=None, # mod relu
+            activation_out=tf.identity,
+            optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
+            loss_function=tf.nn.sparse_softmax_cross_entropy_with_logits)
 
         print('Done.')
 
@@ -82,8 +97,11 @@ class Main:
         #self.cmp_lstm.train(self.cmds[0], 50, 40)
         #loss_lstm = self.cmp_lstm.get_loss_list()
 
-        self.ap_urnn.train(self.apds[0], 50, 40)
-        loss_urnn = self.ap_urnn.get_loss_list()
+        #self.ap_urnn.train(self.apds[0], 50, 40)
+        #loss_urnn = self.ap_urnn.get_loss_list()
+
+        self.cmp_urnn.train(self.cmds[0], 50, 40)
+        loss_urnn = self.cmp_urnn.get_loss_list()
 
         file = open('some_loss.txt', 'w')
         for item in loss:

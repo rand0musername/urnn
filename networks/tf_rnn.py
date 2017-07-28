@@ -77,8 +77,8 @@ class TFRNN:
         # outputs_h: [batch_size, max_time, self.output_size]
         outputs_h, final_state = tf.nn.dynamic_rnn(self.cell, self.input_x, initial_state=self.dyn_rnn_init_states) 
         # returns (outputs, state)
-        print("after dyn_rnn outputs_h:", outputs_h.shape, outputs_h.dtype)
-        print("after dyn_rnn final_state:", final_state.shape, final_state.dtype)
+        #print("after dyn_rnn outputs_h:", outputs_h.shape, outputs_h.dtype)
+        #print("after dyn_rnn final_state:", final_state.shape, final_state.dtype)
 
         # outputs_h = tf.cast(outputs_h, tf.float32)
 
@@ -157,7 +157,7 @@ class TFRNN:
 
                 # validate after each epoch
                 validation_loss = self.evaluate(sess, X_val, Y_val)
-                mean_epoch_loss = np.mean(self.loss_list[-num_batches])
+                mean_epoch_loss = np.mean(self.loss_list[-num_batches:])
                 print("End of epoch, mean epoch loss:", mean_epoch_loss, "loss on val. set:", validation_loss)
 
     def test(self, dataset, batch_size, epochs):
