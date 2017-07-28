@@ -17,6 +17,8 @@ class DiagonalMatrix():
 # Reflection unitary matrix
 class ReflectionMatrix():
     def __init__(self, name, num_units):
+        self.num_units = num_units
+
         self.re = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_re")
         self.im = tf.Variable(tf.random_uniform([num_units], minval=-1, maxval=1), name=name+"_im")
         self.v = tf.complex(self.re, self.im) # [num_units]
@@ -26,12 +28,15 @@ class ReflectionMatrix():
     # [batch_sz, num_units]
     def mul(self, z): 
         # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
-        sq_norm_ind = tf.complex_abs(self.v)**2
-        sq_norm = tf.reduce_sum(sq_norm_ind, 1) # [batch_sz]
+        sq_norm_ind = tf.abs(self.v)**2
+        sq_norm = tf.reduce_sum(sq_norm_ind) # [1]
         
         vstar_z = tf.reduce_sum(self.vstar * z, 1) # [batch_sz]
-        prod = self.v * tf.tile(vstar_z, [1, num_units]) # [batch_sz * num_units]
-        return z - 2 * prod / sq_norm # [batch_sz * num_units]
+        vstar_z = tf.reshape(vstar_z, [-1, 1]) # [batch_sz * 1]
+
+        prod = self.v * tf.tile(vstar_z, [1, self.num_units]) # [batch_sz * num_units]
+        
+        return z - 2 * prod / tf.complex(sq_norm, 0.0) # [batch_sz * num_units]
 
 # FFTs
 # z: complex[batch_sz, num_units]
@@ -39,22 +44,26 @@ class ReflectionMatrix():
 # no scaling?!
 
 def FFT(z):
-    return tf.fft(z) / sqrt(z.shape[1])
+    return tf.fft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
 
-def IFTT(z):
-    return tf.ifft(z) / sqrt(z.shape[1])
+def IFFT(z):
+    return tf.ifft(z) / tf.sqrt(tf.complex(tf.cast(z.shape[1], tf.float32), 0.0))
 
 # z: complex[batch_sz, num_units]
 # bias: real[num_units]
-
-def modReLU(self, z, bias):
+def modReLU(z, bias):
     EPS = 1e-6 # hack?
-    norm = tf.complex_abs(z)
-    if (norm + bias) >= 0:
-        scale = (norm + bias) / (norm + EPS)
-        return tf.complex(tf.real(z)*scale, tf.imag(z)*scale)
-    else:
-        return tf.zeros(tf.shape(z))
+    norm = tf.abs(z)
+    norm_plus_bias = norm + bias
+
+    # bigger
+    scale = norm_plus_bias / (norm + EPS)
+    bigger = tf.complex(tf.real(z)*scale, tf.imag(z)*scale)
+    # smaller
+    final = tf.zeros(tf.shape(z), dtype=tf.complex64)
+    # final[norm_plus_bias >= 0] = bigger # ??
+    # BRUNO3: BOOLEAN INDEXING
+    return final
 
 ###################################################################################################333
 
@@ -69,13 +78,13 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         super(URNNCell, self).__init__(_reuse=reuse)
         
         # save class variables
-        self.num_in = num_in
+        self._num_in = num_in
         self._num_units = num_units
         self._state_size = num_units 
         self._output_size = num_units*2
 
         # set up input -> hidden connection
-        self.w_ih = tf.get_variable("w_ih", shape=[2*num_units, input_size], 
+        self.w_ih = tf.get_variable("w_ih", shape=[2*num_units, num_in], 
                                     initializer=tf.contrib.layers.xavier_initializer())
         self.b_h = tf.Variable(tf.zeros(num_units), # state size actually
                                     name="b_h")
@@ -86,13 +95,13 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         self.D2 = DiagonalMatrix("D2", num_units)
         self.R2 = ReflectionMatrix("R2", num_units)
         self.D3 = DiagonalMatrix("D3", num_units)
-        self.P = np.random.permutation(num_units)
+        self.P = np.random.permutation(num_units).astype(np.int32)
 
     # needed properties
 
     @property
     def input_size(self):
-        return self._input_size # real
+        return self._num_in # real
 
     @property
     def state_size(self):
@@ -105,18 +114,21 @@ class URNNCell(tf.contrib.rnn.RNNCell):
     def call(self, inputs, state):
         """The most basic URNN cell.
         Args:
-            inputs (Tensor - batch_sz x input_size): One batch of cell input.
+            inputs (Tensor - batch_sz x num_in): One batch of cell input.
             state (Tensor - batch_sz x num_units): Previous cell state: COMPLEX
         Returns:
         A tuple (outputs, state):
             outputs (Tensor - batch_sz x num_units*2): Cell outputs on the whole batch.
             state (Tensor - batch_sz x num_units): New state of the cell.
         """
+        print(inputs.shape)
+        print(state.shape)
+        print("UP!")
 
         # prepare input linear combination
         inputs_mul = tf.matmul(inputs, tf.transpose(self.w_ih)) # [batch_sz, 2*num_units]
-        inputs_mul_c = tf.complex( inputs_mul[:, :self.num_units], 
-                                   inputs_mul[:, self.num_units:] ) 
+        inputs_mul_c = tf.complex( inputs_mul[:, :self._num_units], 
+                                   inputs_mul[:, self._num_units:] ) 
         # [batch_sz, num_units]
         
         # prepare state linear combination (always complex!)
@@ -124,7 +136,8 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         state_mul = self.D1.mul(state)
         state_mul = FFT(state_mul)
         state_mul = self.R1.mul(state_mul)
-        state_mul = state_mul[:, P] # permutation
+        # state_mul = state_mul[:, self.P] # permutation
+        # BRUNO2: PERMUTING
         state_mul = self.D2.mul(state_mul)
         state_mul = IFFT(state_mul)
         state_mul = self.R2.mul(state_mul)
@@ -138,5 +151,10 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         new_state = modReLU(preact, self.b_h) # [batch_sz, num_units] C
         output = tf.concat([tf.real(new_state), tf.imag(new_state)], 1) # [batch_sz, 2*num_units] R
         # outside network (last dense layer) is ready for 2*num_units -> num_out
+        print(output)
+        print(output.shape)
+        print(output.dtype)
+        print("kljucan momenat:")
+        print(new_state.dtype)
         
         return output, new_state

@@ -5,6 +5,7 @@ from .urnn_cell import URNNCell
 class TFRNN:
     def __init__(
         self,
+        name,
         num_in,
         num_hidden, 
         num_out,
@@ -18,15 +19,18 @@ class TFRNN:
         loss_function=tf.squared_difference):
 
         # self
+        self.name = name
         self.loss_list = []
         self.init_state_C = np.sqrt(3 / (2 * num_hidden))
+        self.log_dir = './logs/'
+        self.writer = tf.summary.FileWriter(self.log_dir)
 
         # init cell
         # cell_dict = {'num_units': num_hidden, 'activation': activation_hidden}
         if rnn_cell == URNNCell:
             # cell_dict['input_size'] = num_in
             # del cell_dict['activation']
-            self.cell = rnn_cell(num_units = num_hidden, input_size = num_in)
+            self.cell = rnn_cell(num_units = num_hidden, num_in = num_in)
         else:
             self.cell = rnn_cell(num_units = num_hidden, activation = activation_hidden)
 
@@ -37,43 +41,72 @@ class TFRNN:
       
         # input_x: [batch_size, max_time, num_in]
         # input_y: [batch_size, max_time, num_target] or [batch_size, num_target]
-        self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x")
-        self.input_y = tf.placeholder(tf.float32, [None, num_target] if single_output else [None, None, num_target], name="input_y")
+        self.input_x = tf.placeholder(tf.float32, [None, None, num_in], name="input_x_"+self.name)
+        self.input_y = tf.placeholder(tf.float32, [None, num_target] if single_output else [None, None, num_target],  
+                                      name="input_y_"+self.name)
         
         # rnn initial state(s)
         self.init_states = []
-        for state_dim in list(self.cell.state_size):
-            if type(state_dim) == dict:
-                state_size = state_dim['num_units']
-            else:
-                state_size = state_dim
+        self.dyn_rnn_init_states = None
+
+        # prepare state size list
+        if type(self.cell.state_size) == int:
+            state_size_list = [self.cell.state_size]
+            self.dyn_rnn_init_states = self.cell.state_size # prepare init state for dyn_rnn
+        elif type(self.cell.state_size) == tf.contrib.rnn.LSTMStateTuple:
+            state_size_list = list(self.cell.state_size)
+            self.dyn_rnn_init_states = self.cell.state_size # prepare init state for dyn_rnn
+
+        # construct placeholder list
+        print(str(self.cell))
+        for state_size in state_size_list:
             init_state = tf.placeholder(state_type, [None, state_size], name="init_state")
             self.init_states.append(init_state)
+        
+        # prepare init state for dyn_rnn
+        if type(self.cell.state_size) == int:
+            self.dyn_rnn_init_states = self.init_states[0]
+        elif type(self.cell.state_size) == tf.contrib.rnn.LSTMStateTuple:
+            self.dyn_rnn_init_states = tf.contrib.rnn.LSTMStateTuple(self.init_states[0], self.init_states[1])
 
         # set up h->o parameters
-        self.w_ho = tf.get_variable("w_ho", shape=[num_out, self.output_size], 
+        self.w_ho = tf.get_variable("w_ho_"+self.name, shape=[num_out, self.output_size], 
                                             initializer=tf.contrib.layers.xavier_initializer()) # fixme
-        self.b_o = tf.Variable(tf.zeros([num_out, 1]), name="b_o")
+        self.b_o = tf.Variable(tf.zeros([num_out, 1]), name="b_o_"+self.name)
 
         # run the dynamic rnn and get hidden layer outputs
         # outputs_h: [batch_size, max_time, self.output_size]
-        dyn_rnn_init_states = tuple(self.init_states) if len(self.init_states)>1 else self.init_states[0]
-        outputs_h, _ = tf.nn.dynamic_rnn(self.cell, self.input_x, dtype=tf.float32) 
+        outputs_h, DUMMY = tf.nn.dynamic_rnn(self.cell, self.input_x, initial_state=self.dyn_rnn_init_states) 
         # returns (outputs, state)
+        print(type(outputs_h))
+        print(outputs_h.shape)
+        print(outputs_h.dtype)
+        #print(type(DUMMY))
+        #print(DUMMY.shape)
+        #print(DUMMY.dtype)
+
+        # WHY IS outputs_h not tf.float32?!
+        outputs_h = tf.cast(outputs_h, tf.float32)
 
         # produce final outputs from hidden layer outputs
         if single_output:
+            # BRUNO0: is indexing ok?!
             outputs_h = tf.reshape(outputs_h[:, -1, :], [-1, self.output_size])
             # outputs_h: [batch_size, self.output_size]
             preact = tf.matmul(outputs_h, tf.transpose(self.w_ho)) + tf.transpose(self.b_o)
             outputs_o = activation_out(preact) # [batch_size, num_out]
         else:
-            w_ho_deep = tf.reshape(tf.transpose(self.w_ho), [1, self.output_size, num_out]) # .... isto kao dole
-            #w_ho_deep = tf.tile(w_ho_deep, [batch_size, 1, 1])
 
-            preact = tf.matmul(outputs_h, w_ho_deep) + self.b_o
+            # outputs_h: [batch_size, max_time, m_out]
+            out_h_mul = tf.einsum('ijk,kl->ijl', outputs_h, tf.transpose(self.w_ho))
+            preact = out_h_mul + tf.transpose(self.b_o)
+
+            # w_ho_deep = tf.reshape(, [1, self.output_size, num_out]) # .... isto kao dole
+            # w_ho_deep = tf.tile(w_ho_deep, [batch_size, 1, 1])
+            # preact = tf.matmul(outputs_h, w_ho_deep) + self.b_o
             outputs_o = activation_out(preact) # [batch_size, time_step, num_out]
             # TODO solve this
+            # BRUNO1: BATCH MUL
 
         # calculate losses and set up optimizer
 
@@ -92,6 +125,11 @@ class TFRNN:
             raise Exception('New loss function')
 
         self.train_step = optimizer.minimize(self.total_loss, name='Optimizer')
+
+        # tensorboard!
+        self.writer.add_graph(tf.get_default_graph())
+        self.writer.flush()
+        self.writer.close()
 
     def train(self, dataset, batch_size, epochs):
         # session

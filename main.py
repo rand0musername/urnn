@@ -3,6 +3,7 @@ from problems.adding_problem import AddingProblemDataset
 from problems.copying_memory_problem import CopyingMemoryProblemDataset
 # from networks.keras_lstm import KerasLSTM
 from networks.tf_rnn import TFRNN
+from networks.urnn_cell import URNNCell
 
 class Main:
 
@@ -15,8 +16,8 @@ class Main:
 
         # init copying memory problem
         cmd_samples = 10000
-        self.cmd_timesteps = [100, 200, 300, 500]
-        self.cmds = [CopyingMemoryProblemDataset(cmd_samples, timesteps) for timesteps in self.cmd_timesteps]
+        self.cmd_timesteps = [30, 200, 300, 500]
+        self.cmds = [CopyingMemoryProbwlemDataset(cmd_samples, timesteps) for timesteps in self.cmd_timesteps]
 
         print('Done.')
 
@@ -25,6 +26,7 @@ class Main:
         print('Initializing networks...')
 
         # self.ap_lstm = TFRNN(
+        #     name="ap_lstm",
         #     num_in = 2,
         #     num_hidden = 128,
         #     num_out = 1,
@@ -37,7 +39,22 @@ class Main:
         #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
         #     loss_function=tf.squared_difference)
 
+        # self.ap_urnn = TFRNN(
+        #     name="ap_urnn",
+        #     num_in = 2,
+        #     num_hidden = 512,
+        #     num_out = 1,
+        #     num_target = 1,
+        #     single_output = True,
+        #     state_type = tf.complex64,
+        #     rnn_cell=URNNCell,
+        #     activation_hidden=None, # modrelu
+        #     activation_out=tf.identity,
+        #     optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
+        #     loss_function=tf.squared_difference)
+
         self.cmp_lstm = TFRNN(
+            name="cmp_lstm",
             num_in = 1,
             num_hidden = 40,
             num_out = 10,
@@ -63,7 +80,12 @@ class Main:
         # loss = self.ap_lstm.get_loss_list()
 
         self.cmp_lstm.train(self.cmds[0], 50, 40)
-        loss = self.cmp_lstm.get_loss_list()
+        loss_lstm = self.cmp_lstm.get_loss_list()
+
+        print("URNN")
+
+        #self.ap_urnn.train(self.apds[0], 50, 40)
+        #loss_urnn = self.ap_urnn.get_loss_list()
 
         file = open('some_loss.txt', 'w')
         for item in loss:
