@@ -91,7 +91,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         # save class variables
         self._num_in = num_in
         self._num_units = num_units
-        self._state_size = num_units 
+        self._state_size = num_units*2 
         self._output_size = num_units*2
 
         # set up input -> hidden connection
@@ -142,7 +142,11 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         
         # prepare state linear combination (always complex!)
         # [batch_sz, num_units]
-        state_mul = self.D1.mul(state)
+
+        state_c = tf.complex( state[:, :self._num_units], 
+                              state[:, self._num_units:] ) 
+
+        state_mul = self.D1.mul(state_c)
         state_mul = FFT(state_mul)
         state_mul = self.R1.mul(state_mul)
         state_mul = self.P.mul(state_mul)
@@ -156,10 +160,10 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         preact = inputs_mul_c + state_mul
         # [batch_sz, num_units]
 
-        new_state = modReLU(preact, self.b_h) # [batch_sz, num_units] C
-        output = tf.concat([tf.real(new_state), tf.imag(new_state)], 1) # [batch_sz, 2*num_units] R
+        new_state_c = modReLU(preact, self.b_h) # [batch_sz, num_units] C
+        new_state = tf.concat([tf.real(new_state_c), tf.imag(new_state_c)], 1) # [batch_sz, 2*num_units] R
         # outside network (last dense layer) is ready for 2*num_units -> num_out
-
+        output = new_state
         print("cell.call output:", output.shape, output.dtype)
         print("cell.call new_state:", new_state.shape, new_state.dtype)
 

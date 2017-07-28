@@ -94,7 +94,6 @@ class Main:
 main = Main()
 main.init_data()
 main.init_networks()
-exit(0)
 main.train_networks()
 
 

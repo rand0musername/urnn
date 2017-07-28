@@ -59,7 +59,7 @@ class TFRNN:
 
         # construct placeholder list==
         for state_size in state_size_list:
-            init_state = tf.placeholder(state_type, [None, state_size], name="init_state")
+            init_state = tf.placeholder(tf.float32, [None, state_size], name="init_state")
             self.init_states.append(init_state)
         
         # prepare init state for dyn_rnn
