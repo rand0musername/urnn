@@ -57,8 +57,7 @@ class TFRNN:
             state_size_list = list(self.cell.state_size)
             self.dyn_rnn_init_states = self.cell.state_size # prepare init state for dyn_rnn
 
-        # construct placeholder list
-        print(str(self.cell))
+        # construct placeholder list==
         for state_size in state_size_list:
             init_state = tf.placeholder(state_type, [None, state_size], name="init_state")
             self.init_states.append(init_state)
@@ -76,17 +75,14 @@ class TFRNN:
 
         # run the dynamic rnn and get hidden layer outputs
         # outputs_h: [batch_size, max_time, self.output_size]
-        outputs_h, DUMMY = tf.nn.dynamic_rnn(self.cell, self.input_x, initial_state=self.dyn_rnn_init_states) 
+        outputs_h, final_state = tf.nn.dynamic_rnn(self.cell, self.input_x, initial_state=self.dyn_rnn_init_states) 
         # returns (outputs, state)
-        print(type(outputs_h))
-        print(outputs_h.shape)
-        print(outputs_h.dtype)
-        #print(type(DUMMY))
-        #print(DUMMY.shape)
-        #print(DUMMY.dtype)
+        print("after dyn_rnn outputs_h:", outputs_h.shape, outputs_h.dtype)
+        print("after dyn_rnn final_state:", final_state.shape, final_state.dtype)
 
-        # WHY IS outputs_h not tf.float32?!
-        outputs_h = tf.cast(outputs_h, tf.float32)
+        # outputs_h = tf.cast(outputs_h, tf.float32)
+
+        # outputs_h has to be real!!!
 
         # produce final outputs from hidden layer outputs
         if single_output:

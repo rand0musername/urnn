@@ -82,8 +82,6 @@ class Main:
         #self.cmp_lstm.train(self.cmds[0], 50, 40)
         #loss_lstm = self.cmp_lstm.get_loss_list()
 
-        print("URNN")
-
         self.ap_urnn.train(self.apds[0], 50, 40)
         loss_urnn = self.ap_urnn.get_loss_list()
 
@@ -96,7 +94,7 @@ class Main:
 main = Main()
 main.init_data()
 main.init_networks()
-#exit(0)
+exit(0)
 main.train_networks()
 
 
