@@ -94,6 +94,7 @@ def modReLU(z, bias): # relu(|z|+b) * (z / |z|)
 
 ###################################################################################################333
 
+# 4k / 7k trainable params
 class URNNCell(tf.contrib.rnn.RNNCell):
     """The most basic URNN cell.
     Args:
@@ -103,7 +104,6 @@ class URNNCell(tf.contrib.rnn.RNNCell):
 
     def __init__(self, num_units, num_in, reuse=None):
         super(URNNCell, self).__init__(_reuse=reuse)
-        print('hi from urnn cell')
         # save class variables
         self._num_in = num_in
         self._num_units = num_units

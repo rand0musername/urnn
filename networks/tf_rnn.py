@@ -6,17 +6,16 @@ class TFRNN:
     def __init__(
         self,
         name,
+        rnn_cell,
         num_in,
         num_hidden, 
         num_out,
         num_target,
-        single_output=True,
-        state_type = tf.float32,
-        rnn_cell=tf.contrib.rnn.BasicRNNCell,
-        activation_hidden=tf.tanh,
-        activation_out=tf.identity,
-        optimizer=tf.train.RMSPropOptimizer(learning_rate=0.001),
-        loss_function=tf.squared_difference):
+        single_output,
+        activation_hidden,
+        activation_out,
+        optimizer,
+        loss_function):
 
         # self
         self.name = name
@@ -119,6 +118,10 @@ class TFRNN:
         self.writer.add_graph(tf.get_default_graph())
         self.writer.flush()
         self.writer.close()
+
+        # number of trainable params
+        t_params = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
+        print('Network __init__ over. Number of trainable params=', t_params)
 
     def train(self, dataset, batch_size, epochs):
         # session
