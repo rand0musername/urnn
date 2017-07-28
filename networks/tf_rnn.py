@@ -96,18 +96,11 @@ class TFRNN:
             preact = tf.matmul(outputs_h, tf.transpose(self.w_ho)) + tf.transpose(self.b_o)
             outputs_o = activation_out(preact) # [batch_size, num_out]
         else:
-
             # outputs_h: [batch_size, max_time, m_out]
             out_h_mul = tf.einsum('ijk,kl->ijl', outputs_h, tf.transpose(self.w_ho))
             preact = out_h_mul + tf.transpose(self.b_o)
-
-            # w_ho_deep = tf.reshape(, [1, self.output_size, num_out]) # .... isto kao dole
-            # w_ho_deep = tf.tile(w_ho_deep, [batch_size, 1, 1])
-            # preact = tf.matmul(outputs_h, w_ho_deep) + self.b_o
             outputs_o = activation_out(preact) # [batch_size, time_step, num_out]
-            # TODO solve this
-            # BRUNO1: BATCH MUL
-
+            
         # calculate losses and set up optimizer
 
         # loss function is usually one of these two:

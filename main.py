@@ -17,7 +17,7 @@ class Main:
         # init copying memory problem
         cmd_samples = 10000
         self.cmd_timesteps = [30, 200, 300, 500]
-        self.cmds = [CopyingMemoryProbwlemDataset(cmd_samples, timesteps) for timesteps in self.cmd_timesteps]
+        self.cmds = [CopyingMemoryProblemDataset(cmd_samples, timesteps) for timesteps in self.cmd_timesteps]
 
         print('Done.')
 
