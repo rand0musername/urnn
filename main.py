@@ -87,8 +87,8 @@ class Main:
     def train_networks(self):
         print('Staring training...')
 
-        batch_size = 20
-        epochs = 20
+        #batch_size = 50
+        #epochs = 40
 
         # loss = self.ap_lstm.get_loss_list()
         # self.ap_lstm.train(AddingProblemDataset(10000, 100), 100, 40)
@@ -103,9 +103,9 @@ class Main:
         self.cmp_urnn.train(self.cmds[0], 50, 40)
         loss_urnn = self.cmp_urnn.get_loss_list()
 
-        file = open('some_loss.txt', 'w')
-        for item in loss:
-            file.write("%s\n" % item)
+        #file = open('some_loss.txt', 'w')
+        #for item in loss:
+        #    file.write("%s\n" % item)
 
         print('Done.')
 

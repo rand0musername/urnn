@@ -132,11 +132,15 @@ class TFRNN:
 
             # init loss list
             self.loss_list = []
+            print("Starting training for", self.name)
+            print("NumEpochs:", '{0:3d}'.format(epochs), 
+                  "|BatchSize:", '{0:3d}'.format(batch_size), 
+                  "|NumBatches:", '{0:5d}'.format(num_batches),'\n')
 
             # train for several epochs
             for epoch_idx in range(epochs):
 
-                print("New epoch", epoch_idx)
+                print("Epoch Starting:", epoch_idx, '\n')
                 # train on several minibatches
                 for batch_idx in range(num_batches):
 
@@ -153,12 +157,20 @@ class TFRNN:
 
                     # plot
                     if batch_idx%10 == 0:
-                        print("Step:", batch_idx, "Loss:", batch_loss)
+                        total_examples = batch_size * num_batches * epoch_idx + batch_size * batch_idx + batch_size
+                        # print stats
+
+                        print("Epoch:", '{0:3d}'.format(epoch_idx), 
+                              "|Batch:", '{0:3d}'.format(batch_idx), 
+                              "|TotalExamples:", '{0:5d}'.format(total_examples), # total training examples
+                              "|BatchLoss:", '{0:8.4f}'.format(batch_loss))
 
                 # validate after each epoch
                 validation_loss = self.evaluate(sess, X_val, Y_val)
                 mean_epoch_loss = np.mean(self.loss_list[-num_batches:])
-                print("End of epoch, mean epoch loss:", mean_epoch_loss, "loss on val. set:", validation_loss)
+                print("Epoch Over:", '{0:3d}'.format(epoch_idx), 
+                      "|MeanEpochLoss:", '{0:8.4f}'.format(mean_epoch_loss),
+                      "|ValidationSetLoss:", '{0:8.4f}'.format(validation_loss),'\n')
 
     def test(self, dataset, batch_size, epochs):
         # session
@@ -187,7 +199,7 @@ class TFRNN:
         if training:
             loss, _ = sess.run([self.total_loss, self.train_step], feed_dict)
         else:
-            loss = sess.run([self.total_loss], feed_dict)
+            loss = sess.run([self.total_loss], feed_dict)[0]
         return loss
 
     # loss list getter
