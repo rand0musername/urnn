@@ -163,11 +163,11 @@ class URNNCell(tf.contrib.rnn.RNNCell):
                               state[:, self._num_units:] ) 
 
         state_mul = self.D1.mul(state_c)
-        # state_mul = FFT(state_mul)
+        state_mul = FFT(state_mul)
         state_mul = self.R1.mul(state_mul)
         state_mul = self.P.mul(state_mul)
         state_mul = self.D2.mul(state_mul)
-        # state_mul = IFFT(state_mul)
+        state_mul = IFFT(state_mul)
         state_mul = self.R2.mul(state_mul)
         state_mul = self.D3.mul(state_mul) 
         # [batch_sz, num_units]
