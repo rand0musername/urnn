@@ -2,6 +2,8 @@ class Dataset:
     def __init__(self, num_samples, sample_len):
         self.num_samples = num_samples
         self.sample_len = sample_len
+        if num_samples == -1:
+            return
         self.X_train, self.Y_train = self.generate(int(num_samples * 1))
         self.X_valid, self.Y_valid = self.generate(int(num_samples * 0.3))
         self.X_test, self.Y_test = self.generate(int(num_samples * 0.3))
