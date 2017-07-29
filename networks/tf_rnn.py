@@ -2,6 +2,12 @@ import numpy as np
 import tensorflow as tf
 from .urnn_cell import URNNCell
 
+def serialize_to_file(loss):
+    file=open('AP_200.txt', 'w')
+    for l in loss:
+        file.write("{0}\n".format(l))
+    file.close()
+
 class TFRNN:
     def __init__(
         self,
@@ -162,6 +168,8 @@ class TFRNN:
                     if batch_idx%10 == 0:
                         total_examples = batch_size * num_batches * epoch_idx + batch_size * batch_idx + batch_size
                         # print stats
+
+                        serialize_to_file(self.loss_list)
 
                         print("Epoch:", '{0:3d}'.format(epoch_idx), 
                               "|Batch:", '{0:3d}'.format(batch_idx), 
