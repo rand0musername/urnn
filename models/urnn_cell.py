@@ -24,7 +24,6 @@ class ReflectionMatrix():
         self.v = tf.complex(self.re, self.im) # [num_units]
         # self.v = normalize(self.v)
         self.vstar = tf.conj(self.v) # [num_units]
-        # normalize?!
 
     # [batch_sz, num_units]
     def mul(self, z):
@@ -34,23 +33,6 @@ class ReflectionMatrix():
         sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
         factor = (2 / tf.complex(sq_norm, 0.0))
         return z - factor * tf.matmul(vstar_z, tf.transpose(v))
-
-    '''
-	# [batch_sz, num_units]
-    def mul(self, z): 
-        # z - (2 / |v|^2) * v * v* * z
-
-        # [num_units] * [batch_sz * num_units] -> [batch_sz * num_units]
-
-        sq_norm = tf.reduce_sum(tf.abs(self.v)**2) # [1]
-        
-        vstar_z = tf.reduce_sum(self.vstar * z, 1) # [batch_sz]
-        vstar_z = tf.reshape(vstar_z, [-1, 1]) # [batch_sz * 1]
-
-        prod = self.v * tf.tile(vstar_z, [1, self.num_units]) # [batch_sz * num_units]
-        
-        return z - 2 * prod / tf.complex(sq_norm, 0.0) # [batch_sz * num_units]
-	'''
 
 # Permutation unitary matrix
 class PermutationMatrix:
@@ -62,13 +44,6 @@ class PermutationMatrix:
     # [batch_sz, num_units], permute columns
     def mul(self, z): 
         return tf.transpose(tf.gather(tf.transpose(z), self.P))
-        
-		# self.i = [[elem] for elem in range(num_units)]
-		#z = tf.transpose(z)
-        #parts = tf.dynamic_partition(z, self.P, self.num_units)
-        #stitched = tf.dynamic_stitch(self.i, parts)
-        #stitched = tf.reshape(stitched, [self.num_units, -1])
-        #return tf.transpose(stitched)
 
 # FFTs
 # z: complex[batch_sz, num_units]
@@ -157,8 +132,6 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         # [batch_sz, num_units]
         
         # prepare state linear combination (always complex!)
-        # [batch_sz, num_units]
-
         state_c = tf.complex( state[:, :self._num_units], 
                               state[:, self._num_units:] ) 
 
@@ -180,7 +153,7 @@ class URNNCell(tf.contrib.rnn.RNNCell):
         new_state = tf.concat([tf.real(new_state_c), tf.imag(new_state_c)], 1) # [batch_sz, 2*num_units] R
         # outside network (last dense layer) is ready for 2*num_units -> num_out
         output = new_state
-        #print("cell.call output:", output.shape, output.dtype)
-        #print("cell.call new_state:", new_state.shape, new_state.dtype)
+        # print("cell.call output:", output.shape, output.dtype)
+        # print("cell.call new_state:", new_state.shape, new_state.dtype)
 
         return output, new_state

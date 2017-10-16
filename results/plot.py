@@ -5,18 +5,16 @@ def deserialize(path):
 	return loss
 
 def plot_cmp_100():
-	cmp_simplernn100 = deserialize('presentation/cmp_simple_rnn120')
-	cmp_lstm100 = deserialize('presentation/cmp_lstm120')
-
-	#plt.axis([0, 6000, 0, 2])
+	cmp_simplernn100 = deserialize('cmp_simple_rnn120')
+	cmp_lstm100 = deserialize('cmp_lstm120')
 
 	plt.plot(cmp_simplernn100, 'r-')
 	plt.plot(cmp_lstm100, 'b-')
 	plt.show()
 
 def plot_ap_100():
-	ap_simplernn100 = deserialize('presentation/ap_simplernn100')
-	ap_lstm100 = deserialize('presentation/ap_lstm100')
+	ap_simplernn100 = deserialize('ap_simplernn100')
+	ap_lstm100 = deserialize('ap_lstm100')
 
 	plt.axis([0, 6000, 0, 2])
 
@@ -25,8 +23,8 @@ def plot_ap_100():
 	plt.show()
 
 def plot_ap_200():
-	ap_simplernn200 = deserialize('presentation/ap_simplernn200')
-	ap_lstm200 = deserialize('presentation/ap_lstm200')
+	ap_simplernn200 = deserialize('ap_simplernn200')
+	ap_lstm200 = deserialize('ap_lstm200')
 
 	plt.axis([0, 6000, 0, 2])
 
@@ -35,6 +33,7 @@ def plot_ap_200():
 	plt.show()
 
 
-
+plot_cmp_100()
+plot_ap_100()
 plot_ap_200()
 

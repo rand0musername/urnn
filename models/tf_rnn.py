@@ -3,7 +3,7 @@ import tensorflow as tf
 from .urnn_cell import URNNCell
 
 def serialize_to_file(loss):
-    file=open('AP_200.txt', 'w')
+    file=open('losses.txt', 'w')
     for l in loss:
         file.write("{0}\n".format(l))
     file.close()
@@ -31,10 +31,7 @@ class TFRNN:
         self.writer = tf.summary.FileWriter(self.log_dir)
 
         # init cell
-        # cell_dict = {'num_units': num_hidden, 'activation': activation_hidden}
         if rnn_cell == URNNCell:
-            # cell_dict['input_size'] = num_in
-            # del cell_dict['activation']
             self.cell = rnn_cell(num_units = num_hidden, num_in = num_in)
         else:
             self.cell = rnn_cell(num_units = num_hidden, activation = activation_hidden)
@@ -85,13 +82,8 @@ class TFRNN:
         #print("after dyn_rnn outputs_h:", outputs_h.shape, outputs_h.dtype)
         #print("after dyn_rnn final_state:", final_state.shape, final_state.dtype)
 
-        # outputs_h = tf.cast(outputs_h, tf.float32)
-
-        # outputs_h has to be real!!!
-
         # produce final outputs from hidden layer outputs
         if single_output:
-            # BRUNO0: is indexing ok?!
             outputs_h = tf.reshape(outputs_h[:, -1, :], [-1, self.output_size])
             # outputs_h: [batch_size, self.output_size]
             preact = tf.matmul(outputs_h, tf.transpose(self.w_ho)) + tf.transpose(self.b_o)
@@ -109,7 +101,6 @@ class TFRNN:
         #     (classification, num_out = num_classes, num_target = 1)
         #   tf.squared_difference 
         #     (regression, num_out = num_target)
-
         if loss_function == tf.squared_difference:
             self.total_loss = tf.reduce_mean(loss_function(outputs_o, self.input_y))
         elif loss_function == tf.nn.sparse_softmax_cross_entropy_with_logits:
@@ -117,10 +108,9 @@ class TFRNN:
             self.total_loss = tf.reduce_mean(loss_function(logits=outputs_o, labels=prepared_labels))
         else:
             raise Exception('New loss function')
-
         self.train_step = optimizer.minimize(self.total_loss, name='Optimizer')
 
-        # tensorboard!
+        # tensorboard
         self.writer.add_graph(tf.get_default_graph())
         self.writer.flush()
         self.writer.close()
@@ -158,7 +148,7 @@ class TFRNN:
                     # Y_batch: [batch_size x time x num_target] or [batch_size x num_target] (single_output?)
                     X_batch, Y_batch = dataset.get_batch(batch_idx, batch_size)
 
-                    # evaluate!
+                    # evaluate
                     batch_loss = self.evaluate(sess, X_batch, Y_batch, training=True)
 
                     # save the loss for later
@@ -167,10 +157,9 @@ class TFRNN:
                     # plot
                     if batch_idx%10 == 0:
                         total_examples = batch_size * num_batches * epoch_idx + batch_size * batch_idx + batch_size
+                        
                         # print stats
-
                         serialize_to_file(self.loss_list)
-
                         print("Epoch:", '{0:3d}'.format(epoch_idx), 
                               "|Batch:", '{0:3d}'.format(batch_idx), 
                               "|TotalExamples:", '{0:5d}'.format(total_examples), # total training examples

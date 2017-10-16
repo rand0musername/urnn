@@ -21,8 +21,6 @@ class KerasLSTM():
     def train(self, dataset, batch_size, epochs):
         X_train, Y_train, X_test, Y_test = dataset.load_data()
 
-        # print(X_train[0], Y_train[0])
-
         self.model.compile(loss='mse', optimizer=keras.optimizers.RMSprop(lr = 0.001))
         tensorboard = keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0.01, write_graph=True, write_images=False, write_grads = True,batch_size = batch_size)
 
