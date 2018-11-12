@@ -1,7 +1,7 @@
 import tensorflow as tf
 from problems.mnist import MnistProblemDataset
-from networks.tf_rnn import TFRNN
-from networks.urnn_cell import URNNCell
+from models.tf_rnn import TFRNN
+from models.urnn_cell import URNNCell
 import numpy as np
 
 loss_path='mnist_results/'
