@@ -1,8 +1,8 @@
 import tensorflow as tf
 from problems.adding_problem import AddingProblemDataset
 from problems.copying_memory_problem import CopyingMemoryProblemDataset
-from networks.tf_rnn import TFRNN
-from networks.urnn_cell import URNNCell
+from models.tf_rnn import TFRNN
+from models.urnn_cell import URNNCell
 import numpy as np
 
 '''
